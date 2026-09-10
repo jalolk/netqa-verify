@@ -40,7 +40,7 @@ class SshTransport:
                 username=self.device.username,
                 password=self.device.password,
                 conn_timeout=self.timeout,
-                fast_cli=False,
+                fast_cli=True,
             )
         except NetmikoBaseException as exc:
             raise TransportError(f"{self.device.name}: SSH connection failed: {exc}") from exc

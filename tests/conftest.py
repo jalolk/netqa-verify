@@ -161,14 +161,28 @@ def faults(inventory: dict[str, Device], lab: None) -> Iterator[dict[str, FaultI
         injector.close()
 
 
+def _fully_converged(backend: RouteManager) -> bool:
+    for router in ROUTERS:
+        if backend.route_next_hops(router, FAR_PREFIX[router]) != ECMP_NEXT_HOPS[router]:
+            return False
+        sessions = [
+            session
+            for group in backend.get_ospf_neighbors(router).values()
+            for session in group
+        ]
+        if len(sessions) != 2 or not all(s["nbrState"].startswith("Full") for s in sessions):
+            return False
+    return backend.is_reachable("h1", HOSTS["h2"], count=1)
+
+
 @pytest.fixture
 def converged(cli_backend: RouteManager) -> Iterator[None]:
     yield
     wait_until(
-        lambda: cli_backend.is_reachable("h1", HOSTS["h2"], count=1),
+        lambda: _fully_converged(cli_backend),
         timeout=120,
         interval=1,
-        description="topology to reconverge after the test",
+        description="every adjacency and equal-cost path to be restored",
     )
 
 
