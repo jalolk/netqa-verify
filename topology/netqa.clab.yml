@@ -1,5 +1,9 @@
 name: netqa
 
+mgmt:
+  network: clab-netqa
+  ipv4-subnet: 172.100.100.0/24
+
 topology:
   defaults:
     kind: linux
@@ -10,22 +14,26 @@ topology:
 
   nodes:
     r1:
+      mgmt-ipv4: 172.100.100.11
       binds:
         - configs/r1/frr.conf:/etc/frr/frr.conf
         - configs/daemons:/etc/frr/daemons
         - configs/vtysh.conf:/etc/frr/vtysh.conf
     r2:
+      mgmt-ipv4: 172.100.100.12
       binds:
         - configs/r2/frr.conf:/etc/frr/frr.conf
         - configs/daemons:/etc/frr/daemons
         - configs/vtysh.conf:/etc/frr/vtysh.conf
     h1:
       image: netqa/host:latest
+      mgmt-ipv4: 172.100.100.21
       exec:
         - ip addr add 10.0.1.10/24 dev eth1
         - ip route replace default via 10.0.1.1
     h2:
       image: netqa/host:latest
+      mgmt-ipv4: 172.100.100.22
       exec:
         - ip addr add 10.0.2.10/24 dev eth1
         - ip route replace default via 10.0.2.1
