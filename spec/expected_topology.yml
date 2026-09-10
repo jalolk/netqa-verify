@@ -11,21 +11,27 @@ devices:
       eth0: [172.100.100.11/24]
       eth1: [10.0.1.1/24]
       eth2: [10.0.12.1/24]
+      eth3: [10.0.13.1/24]
     ospf:
       neighbors:
         - id: 10.255.255.2
           address: 10.0.12.2
           state: Full
+        - id: 10.255.255.2
+          address: 10.0.13.2
+          state: Full
     routes:
       - prefix: 10.0.2.0/24
         protocol: ospf
-        next_hops: [10.0.12.2]
+        next_hops: [10.0.12.2, 10.0.13.2]
       - prefix: 10.255.255.2/32
         protocol: ospf
-        next_hops: [10.0.12.2]
+        next_hops: [10.0.12.2, 10.0.13.2]
       - prefix: 10.0.1.0/24
         protocol: connected
       - prefix: 10.0.12.0/24
+        protocol: connected
+      - prefix: 10.0.13.0/24
         protocol: connected
       - prefix: 10.255.255.1/32
         protocol: connected
@@ -39,21 +45,27 @@ devices:
       eth0: [172.100.100.12/24]
       eth1: [10.0.2.1/24]
       eth2: [10.0.12.2/24]
+      eth3: [10.0.13.2/24]
     ospf:
       neighbors:
         - id: 10.255.255.1
           address: 10.0.12.1
           state: Full
+        - id: 10.255.255.1
+          address: 10.0.13.1
+          state: Full
     routes:
       - prefix: 10.0.1.0/24
         protocol: ospf
-        next_hops: [10.0.12.1]
+        next_hops: [10.0.12.1, 10.0.13.1]
       - prefix: 10.255.255.1/32
         protocol: ospf
-        next_hops: [10.0.12.1]
+        next_hops: [10.0.12.1, 10.0.13.1]
       - prefix: 10.0.2.0/24
         protocol: connected
       - prefix: 10.0.12.0/24
+        protocol: connected
+      - prefix: 10.0.13.0/24
         protocol: connected
       - prefix: 10.255.255.2/32
         protocol: connected

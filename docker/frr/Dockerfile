@@ -1,6 +1,6 @@
 FROM quay.io/frrouting/frr:10.7.1
 
-RUN apk add --no-cache openssh-server bash \
+RUN apk add --no-cache openssh-server bash iptables \
     && adduser -D -s /bin/bash admin \
     && echo 'admin:admin' | chpasswd \
     && addgroup admin frr \

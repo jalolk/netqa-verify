@@ -41,4 +41,5 @@ topology:
   links:
     - endpoints: ["h1:eth1", "r1:eth1"]
     - endpoints: ["r1:eth2", "r2:eth2"]
+    - endpoints: ["r1:eth3", "r2:eth3"]
     - endpoints: ["r2:eth1", "h2:eth1"]
