@@ -131,8 +131,16 @@ class CliDevice:
                 result[fields[0].split("@")[0]] = fields[2:]
         return result
 
-    def ping(self, destination: str, count: int = 3, timeout: int = 2) -> dict[str, Any]:
-        output = self.run_shell(f"ping -c {count} -W {timeout} {shlex.quote(destination)}")
+    def ping(
+        self,
+        destination: str,
+        count: int = 3,
+        timeout: int = 2,
+        interval: float = 0.2,
+    ) -> dict[str, Any]:
+        output = self.run_shell(
+            f"ping -c {count} -i {interval} -W {timeout} {shlex.quote(destination)}"
+        )
         match = PING_STATS.search(output)
         if not match:
             raise CliError(f"{self.name}: unparsable ping output: {output!r}")

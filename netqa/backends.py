@@ -51,7 +51,7 @@ class RouteManager(ABC):
             if hop.get("ip") and (hop.get("active") or not active_only)
         )
 
-    def is_reachable(self, device: str, destination: str, count: int = 3) -> bool:
+    def is_reachable(self, device: str, destination: str, count: int = 2) -> bool:
         return bool(self.ping(device, destination, count=count)["success"])
 
     def __enter__(self) -> "RouteManager":

@@ -106,9 +106,9 @@ def create_app(inventory: dict[str, Device] | None = None) -> FastAPI:
             return {"device": name, "prefix": prefix, "deleted": True}
 
     @app.get("/devices/{name}/ping/{destination}")
-    def ping(name: str, destination: str, count: int = 3) -> dict[str, Any]:
+    def ping(name: str, destination: str, count: int = 3, interval: float = 0.2) -> dict[str, Any]:
         with session(lookup(name)) as client:
-            return client.ping(destination, count=count)
+            return client.ping(destination, count=count, interval=interval)
 
     return app
 

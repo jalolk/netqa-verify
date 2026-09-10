@@ -5,12 +5,9 @@ import pytest
 from netqa.backends import RouteManager
 from netqa.wait import wait_until
 
-from tests.conftest import HOSTS, ROUTERS, TRANSIT_NEXT_HOP
+from tests.conftest import ECMP_NEXT_HOPS, FAR_PREFIX, HOSTS, ROUTERS, TRANSIT_NEXT_HOP
 
 pytestmark = pytest.mark.parity
-
-LEARNED_PREFIX = {"r1": "10.0.2.0/24", "r2": "10.0.1.0/24"}
-
 
 def test_backend_lists_all_devices(backend: RouteManager) -> None:
     assert set(backend.device_names()) == set(ROUTERS) | set(HOSTS)
@@ -31,10 +28,10 @@ def test_router_has_full_ospf_adjacency(backend: RouteManager, router: str) -> N
 
 @pytest.mark.parametrize("router", ROUTERS)
 def test_router_learns_far_side_prefix_via_ospf(backend: RouteManager, router: str) -> None:
-    prefix = LEARNED_PREFIX[router]
+    prefix = FAR_PREFIX[router]
     ospf_routes = backend.list_routes(router, protocol="ospf")
     assert prefix in ospf_routes, f"{router} did not learn {prefix} via OSPF"
-    assert backend.route_next_hops(router, prefix) == [TRANSIT_NEXT_HOP[router]]
+    assert backend.route_next_hops(router, prefix) == ECMP_NEXT_HOPS[router]
 
 
 def test_end_to_end_reachability_across_routed_path(backend: RouteManager) -> None:
