@@ -1,14 +1,13 @@
 from __future__ import annotations
 
+import ipaddress
 import json
 import re
 import shlex
 from typing import Any
 
-from netmiko import ConnectHandler
-from netmiko.exceptions import NetmikoBaseException
-
 from netqa.inventory import Device
+from netqa.transport import Transport, TransportError, make_transport
 
 PING_STATS = re.compile(
     r"(?P<sent>\d+) packets transmitted, (?P<received>\d+) (?:packets )?received"
@@ -19,14 +18,35 @@ class CliError(RuntimeError):
     pass
 
 
+def validate_prefix(prefix: str) -> str:
+    try:
+        return str(ipaddress.ip_network(prefix, strict=True))
+    except ValueError as exc:
+        raise CliError(f"invalid prefix {prefix!r}: {exc}") from None
+
+
+def validate_address(address: str) -> str:
+    try:
+        return str(ipaddress.ip_address(address))
+    except ValueError as exc:
+        raise CliError(f"invalid address {address!r}: {exc}") from None
+
+
 class CliDevice:
-    def __init__(self, device: Device, timeout: int = 20) -> None:
+    def __init__(
+        self,
+        device: Device,
+        transport: Transport | str = "ssh",
+        timeout: int = 20,
+    ) -> None:
         self.device = device
-        self.timeout = timeout
-        self._conn: Any | None = None
+        self._transport = (
+            make_transport(device, transport, timeout)
+            if isinstance(transport, str)
+            else transport
+        )
 
     def __enter__(self) -> "CliDevice":
-        self.connect()
         return self
 
     def __exit__(self, *_exc: object) -> None:
@@ -36,39 +56,24 @@ class CliDevice:
     def name(self) -> str:
         return self.device.name
 
-    def connect(self) -> None:
-        if self._conn is not None:
-            return
-        try:
-            self._conn = ConnectHandler(
-                device_type="linux",
-                host=self.device.host,
-                port=self.device.port,
-                username=self.device.username,
-                password=self.device.password,
-                conn_timeout=self.timeout,
-                fast_cli=False,
-            )
-        except NetmikoBaseException as exc:
-            raise CliError(f"{self.name}: SSH connection failed: {exc}") from exc
+    @property
+    def transport_name(self) -> str:
+        return self._transport.name
 
     def close(self) -> None:
-        if self._conn is not None:
-            self._conn.disconnect()
-            self._conn = None
+        self._transport.close()
 
     def run_shell(self, command: str) -> str:
-        if self._conn is None:
-            raise CliError(f"{self.name}: not connected")
         try:
-            return self._conn.send_command(command, read_timeout=self.timeout).strip()
-        except NetmikoBaseException as exc:
-            raise CliError(f"{self.name}: command failed: {command}: {exc}") from exc
+            return self._transport.run(command)
+        except TransportError as exc:
+            raise CliError(str(exc)) from exc
 
-    def run_vtysh(self, command: str) -> str:
+    def run_vtysh(self, *commands: str) -> str:
         if not self.device.is_router:
             raise CliError(f"{self.name}: vtysh is only available on routers")
-        return self.run_shell(f"vtysh -c {shlex.quote(command)}")
+        args = " ".join(f"-c {shlex.quote(c)}" for c in commands)
+        return self.run_shell(f"vtysh {args}")
 
     def run_vtysh_json(self, command: str) -> Any:
         output = self.run_vtysh(f"{command} json")
@@ -103,7 +108,19 @@ class CliDevice:
         return self.run_vtysh_json("show ip ospf neighbor").get("neighbors", {})
 
     def has_route(self, prefix: str) -> bool:
-        return prefix in self.get_routes()
+        return validate_prefix(prefix) in self.get_routes()
+
+    def add_static_route(self, prefix: str, next_hop: str) -> None:
+        prefix = validate_prefix(prefix)
+        next_hop = validate_address(next_hop)
+        self.run_vtysh("configure terminal", f"ip route {prefix} {next_hop}")
+
+    def delete_static_route(self, prefix: str, next_hop: str | None = None) -> None:
+        prefix = validate_prefix(prefix)
+        statement = f"no ip route {prefix}"
+        if next_hop:
+            statement = f"{statement} {validate_address(next_hop)}"
+        self.run_vtysh("configure terminal", statement)
 
     def get_addresses(self) -> dict[str, list[str]]:
         output = self.run_shell("ip -br -4 addr show")
