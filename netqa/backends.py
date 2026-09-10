@@ -22,6 +22,9 @@ class RouteManager(ABC):
     def list_routes(self, device: str, protocol: str | None = None) -> dict[str, Any]: ...
 
     @abstractmethod
+    def get_addresses(self, device: str) -> dict[str, list[str]]: ...
+
+    @abstractmethod
     def get_ospf_neighbors(self, device: str) -> dict[str, Any]: ...
 
     @abstractmethod
@@ -85,6 +88,12 @@ class CliBackend(RouteManager):
         except CliError as exc:
             raise BackendError(str(exc)) from exc
 
+    def get_addresses(self, device: str) -> dict[str, list[str]]:
+        try:
+            return self._session(device).get_addresses()
+        except CliError as exc:
+            raise BackendError(str(exc)) from exc
+
     def get_ospf_neighbors(self, device: str) -> dict[str, Any]:
         try:
             return self._session(device).get_ospf_neighbors()
@@ -130,6 +139,12 @@ class ApiBackend(RouteManager):
     def list_routes(self, device: str, protocol: str | None = None) -> dict[str, Any]:
         try:
             return self._client.get_routes(device, protocol=protocol)
+        except ApiError as exc:
+            raise BackendError(str(exc)) from exc
+
+    def get_addresses(self, device: str) -> dict[str, list[str]]:
+        try:
+            return self._client.get_addresses(device)
         except ApiError as exc:
             raise BackendError(str(exc)) from exc
 
