@@ -68,6 +68,35 @@ Python layer parses structured data rather than scraping CLI text.
 Lab credentials are `admin` / `admin`. They are intentionally trivial and are
 suitable only for a disposable local topology.
 
+## Interfaces
+
+Every device operation is reachable through two independent paths, which lets
+one interface be validated against the other rather than against itself.
+
+| Path | Transport | Entry point |
+| --- | --- | --- |
+| CLI | SSH (netmiko) | `netqa.cli.CliDevice` |
+| API | Docker exec, over HTTP | `netqa.api` service, `netqa.client.ApiClient` |
+
+```bash
+./scripts/serve.sh          # http://127.0.0.1:8000, docs at /docs
+```
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `GET` | `/health` | Service and transport status |
+| `GET` | `/devices` | Inventory listing |
+| `GET` | `/devices/{name}/interfaces` | Interface state |
+| `GET` | `/devices/{name}/addresses` | Configured addresses |
+| `GET` | `/devices/{name}/routes` | Routing table, optional `?protocol=` filter |
+| `GET` | `/devices/{name}/ospf/neighbors` | OSPF adjacencies |
+| `POST` | `/devices/{name}/routes` | Add a static route |
+| `DELETE` | `/devices/{name}/routes/{prefix}` | Remove a static route |
+| `GET` | `/devices/{name}/ping/{destination}` | Reachability check |
+
+A route written through the API is observable over SSH and vice versa, so the
+two paths can be asserted equivalent.
+
 ## Layout
 
 | Path | Contents |
@@ -76,8 +105,13 @@ suitable only for a disposable local topology.
 | `topology/configs/` | Per-router FRR configuration |
 | `docker/` | Node image definitions |
 | `inventory.yml` | Device inventory shared by all automation |
-| `netqa/` | Python automation package |
+| `netqa/inventory.py` | Device inventory model |
+| `netqa/transport.py` | SSH and Docker transports |
+| `netqa/cli.py` | Device operations over a transport |
+| `netqa/api.py` | FastAPI service |
+| `netqa/client.py` | HTTP client SDK |
 | `scripts/lab.sh` | Lab lifecycle control |
 | `scripts/build-images.sh` | Node image build |
 | `scripts/collect.py` | State collection over SSH (Python) |
 | `scripts/collect.sh` | State collection over SSH (Bash) |
+| `scripts/serve.sh` | Run the API service |
