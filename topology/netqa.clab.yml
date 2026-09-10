@@ -1,0 +1,34 @@
+name: netqa
+
+topology:
+  defaults:
+    kind: linux
+
+  kinds:
+    linux:
+      image: quay.io/frrouting/frr:10.7.1
+
+  nodes:
+    r1:
+      binds:
+        - configs/r1/frr.conf:/etc/frr/frr.conf
+        - configs/daemons:/etc/frr/daemons
+    r2:
+      binds:
+        - configs/r2/frr.conf:/etc/frr/frr.conf
+        - configs/daemons:/etc/frr/daemons
+    h1:
+      image: nicolaka/netshoot:latest
+      exec:
+        - ip addr add 10.0.1.10/24 dev eth1
+        - ip route replace default via 10.0.1.1
+    h2:
+      image: nicolaka/netshoot:latest
+      exec:
+        - ip addr add 10.0.2.10/24 dev eth1
+        - ip route replace default via 10.0.2.1
+
+  links:
+    - endpoints: ["h1:eth1", "r1:eth1"]
+    - endpoints: ["r1:eth2", "r2:eth2"]
+    - endpoints: ["r2:eth1", "h2:eth1"]
