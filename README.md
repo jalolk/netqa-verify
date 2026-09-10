@@ -6,11 +6,13 @@ Containerlab, FRRouting and pytest.
 ## Topology
 
 ```
-                        10.0.12.1 ──── 10.0.12.2
-                       /                           h1 ──────────── r1 ─                          ─ r2 ──────────── h2
-10.0.1.10       10.0.1.1\                        /10.0.2.1       10.0.2.10
-                         10.0.13.1 ──── 10.0.13.2
-              lo 10.255.255.1                lo 10.255.255.2
+   h1 ──────────── r1 ══════════════ r2 ──────────── h2
+10.0.1.10       10.0.1.1          10.0.2.1       10.0.2.10
+             lo 10.255.255.1   lo 10.255.255.2
+
+r1 to r2 transit, two equal-cost links:
+     eth2   10.0.12.1 ──────── 10.0.12.2   eth2
+     eth3   10.0.13.1 ──────── 10.0.13.2   eth3
 ```
 
 The two routers are joined by a pair of equal-cost transit links, so OSPF
