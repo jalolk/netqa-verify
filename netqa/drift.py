@@ -155,7 +155,7 @@ def _compare_routes(expected: ExpectedDevice, actual: dict[str, Any]) -> list[Dr
                 hop["ip"]
                 for entry in entries
                 for hop in entry.get("nexthops", [])
-                if hop.get("ip")
+                if hop.get("ip") and hop.get("active")
             )
             if have != sorted(want.next_hops):
                 drifts.append(

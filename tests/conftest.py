@@ -9,6 +9,7 @@ import pytest
 
 from netqa.backends import RouteManager, make_backend
 from netqa.client import ApiClient
+from netqa.faults import FaultInjector
 from netqa.inventory import Device, load_inventory
 from netqa.spec import TopologySpec, load_spec
 from netqa.wait import wait_until
@@ -20,6 +21,12 @@ SERVE_SCRIPT = ROOT / "scripts" / "serve.sh"
 ROUTERS = ("r1", "r2")
 HOSTS = {"h1": "10.0.1.10", "h2": "10.0.2.10"}
 TRANSIT_NEXT_HOP = {"r1": "10.0.12.2", "r2": "10.0.12.1"}
+TRANSIT_LINKS = {"r1": ("eth2", "eth3"), "r2": ("eth2", "eth3")}
+ECMP_NEXT_HOPS = {
+    "r1": ["10.0.12.2", "10.0.13.2"],
+    "r2": ["10.0.12.1", "10.0.13.1"],
+}
+FAR_PREFIX = {"r1": "10.0.2.0/24", "r2": "10.0.1.0/24"}
 TEST_PREFIXES = ("192.168.240.0/24", "192.168.241.0/24", "192.168.242.0/24")
 
 
@@ -133,6 +140,36 @@ def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
 @pytest.fixture
 def backend(request: pytest.FixtureRequest) -> RouteManager:
     return request.getfixturevalue(f"{request.param}_backend")
+
+
+@pytest.fixture
+def faults(inventory: dict[str, Device], lab: None) -> Iterator[dict[str, FaultInjector]]:
+    injectors = {
+        name: FaultInjector(device)
+        for name, device in inventory.items()
+    }
+    yield injectors
+
+    for name, injector in injectors.items():
+        try:
+            for interface in TRANSIT_LINKS.get(name, ()):
+                injector.set_link(interface, up=True)
+            if name in TRANSIT_LINKS:
+                injector.flush_filter_rules()
+        except Exception:
+            pass
+        injector.close()
+
+
+@pytest.fixture
+def converged(cli_backend: RouteManager) -> Iterator[None]:
+    yield
+    wait_until(
+        lambda: cli_backend.is_reachable("h1", HOSTS["h2"], count=1),
+        timeout=120,
+        interval=1,
+        description="topology to reconverge after the test",
+    )
 
 
 @pytest.fixture

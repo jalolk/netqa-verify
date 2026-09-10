@@ -42,13 +42,13 @@ class RouteManager(ABC):
     def has_route(self, device: str, prefix: str) -> bool:
         return validate_prefix(prefix) in self.list_routes(device)
 
-    def route_next_hops(self, device: str, prefix: str) -> list[str]:
+    def route_next_hops(self, device: str, prefix: str, active_only: bool = True) -> list[str]:
         entries = self.list_routes(device).get(validate_prefix(prefix), [])
         return sorted(
             hop["ip"]
             for entry in entries
             for hop in entry.get("nexthops", [])
-            if hop.get("ip")
+            if hop.get("ip") and (hop.get("active") or not active_only)
         )
 
     def is_reachable(self, device: str, destination: str, count: int = 3) -> bool:
