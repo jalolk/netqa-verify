@@ -129,6 +129,38 @@ sleeping for a fixed period. Protocol adjacency reaching `Full` does not imply
 the data plane is forwarding, so readiness is defined as observable end-to-end
 reachability.
 
+## Intent versus reality
+
+`spec/expected_topology.yml` declares how the network is supposed to be built:
+interface addressing, OSPF adjacencies, which prefixes each router should hold
+and by which protocol, and which endpoints must be able to reach one another.
+Live state is read back from the devices and compared against it.
+
+```bash
+PYTHONPATH=. ./.venv/bin/python scripts/verify.py            # human readable
+PYTHONPATH=. ./.venv/bin/python scripts/verify.py --json     # machine readable
+PYTHONPATH=. ./.venv/bin/python scripts/verify.py --strict   # warnings fail too
+PYTHONPATH=. ./.venv/bin/python scripts/verify.py --backend api
+```
+
+The comparison runs in both directions. Anything the specification requires but
+the network lacks is an error; anything the network has but the specification
+never declared is a warning, which `--strict` promotes to a failure. Undeclared
+state matters as much as missing state, since a route nobody intended is how
+misconfiguration usually presents.
+
+| Category | Severity | Meaning |
+| --- | --- | --- |
+| `missing_device`, `unreachable_device` | error | Device absent or unusable |
+| `missing_interface`, `missing_address` | error | Addressing does not match the design |
+| `missing_ospf_neighbor`, `ospf_neighbor_state` | error | Adjacency absent or not `Full` |
+| `missing_route`, `route_protocol`, `route_next_hop` | error | Route absent, or learned by the wrong means |
+| `reachability` | error | Declared reachability does not hold |
+| `undeclared_route`, `unexpected_address` | warning | Present but never specified |
+
+The exit code is non-zero when errors are present, so the check can gate a
+pipeline directly.
+
 ## Layout
 
 | Path | Contents |
@@ -144,9 +176,13 @@ reachability.
 | `netqa/client.py` | HTTP client SDK |
 | `netqa/backends.py` | `RouteManager` abstraction and backends |
 | `netqa/wait.py` | Polling helpers for timing-sensitive assertions |
+| `netqa/spec.py` | Intended-state model |
+| `netqa/drift.py` | Intended versus live comparison |
+| `spec/expected_topology.yml` | Declared intended state |
 | `tests/` | pytest suite and fixtures |
 | `scripts/lab.sh` | Lab lifecycle control |
 | `scripts/build-images.sh` | Node image build |
 | `scripts/collect.py` | State collection over SSH (Python) |
 | `scripts/collect.sh` | State collection over SSH (Bash) |
 | `scripts/serve.sh` | Run the API service |
+| `scripts/verify.py` | Drift report against the spec |
