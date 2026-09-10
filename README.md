@@ -1,5 +1,50 @@
 # netqa-verify
 
-Automated verification of a simulated multi-node network topology.
+Automated verification of a simulated multi-node network topology, built with
+Containerlab, FRRouting and pytest.
 
-Status: work in progress.
+## Topology
+
+```
+   h1 ──────────── r1 ═══════════════ r2 ──────────── h2
+10.0.1.10       10.0.1.1           10.0.2.1       10.0.2.10
+                10.0.12.1 ──────── 10.0.12.2
+              lo 10.255.255.1     lo 10.255.255.2
+```
+
+| Node | Role | Image |
+| --- | --- | --- |
+| `r1`, `r2` | FRRouting routers, OSPF area 0 | `quay.io/frrouting/frr:10.7.1` |
+| `h1`, `h2` | End hosts on separate subnets | `nicolaka/netshoot` |
+
+`h1` and `h2` sit on different subnets and can only reach each other if OSPF has
+converged and both routers have installed the far-side route, so end-to-end
+reachability is a meaningful assertion rather than a formality.
+
+## Requirements
+
+Containerlab manipulates container network namespaces directly, so the Docker
+daemon must run in the same kernel. On Windows this means native Docker Engine
+inside a WSL2 distribution; Docker Desktop's WSL integration will not work, as
+its daemon runs in a separate VM.
+
+- WSL2 with Ubuntu, `[automount] options = "metadata"` set in `/etc/wsl.conf`
+- Native Docker Engine installed inside the distribution
+- Containerlab
+
+## Usage
+
+```bash
+./scripts/lab.sh deploy     # bring the topology up
+./scripts/lab.sh wait       # block until the data plane converges
+./scripts/lab.sh status     # node and OSPF neighbour state
+./scripts/lab.sh destroy    # tear down
+```
+
+## Layout
+
+| Path | Contents |
+| --- | --- |
+| `topology/netqa.clab.yml` | Containerlab topology definition |
+| `topology/configs/` | Per-router FRR configuration |
+| `scripts/lab.sh` | Lab lifecycle control |
