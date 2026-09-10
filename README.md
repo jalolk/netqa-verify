@@ -97,6 +97,38 @@ one interface be validated against the other rather than against itself.
 A route written through the API is observable over SSH and vice versa, so the
 two paths can be asserted equivalent.
 
+## Tests
+
+Both interfaces implement the same `RouteManager` abstract base class, so every
+assertion can be executed through either one. Tests requesting the `backend`
+fixture are parametrised across both automatically.
+
+```bash
+./.venv/bin/pytest                    # everything, both backends
+./.venv/bin/pytest --backend cli      # SSH path only
+./.venv/bin/pytest -m parity          # by marker
+./.venv/bin/pytest --redeploy         # rebuild the lab first
+./.venv/bin/pytest --destroy-lab      # tear down afterwards
+```
+
+| Marker | Scope |
+| --- | --- |
+| `functional` | Core behaviour of the running topology |
+| `parity` | Identical assertions through every backend |
+| `regression` | Re-checks core paths after configuration change |
+| `performance` | Timing characteristics |
+| `security` | Traffic filtering behaves as intended |
+
+Fixtures are layered by cost. The lab is brought up once per session and reused
+if already running; API service startup is session scoped; static routes created
+during a test are removed at function scope, with a session-wide sweep as a
+backstop.
+
+Timing-sensitive assertions poll through `netqa.wait.wait_until` rather than
+sleeping for a fixed period. Protocol adjacency reaching `Full` does not imply
+the data plane is forwarding, so readiness is defined as observable end-to-end
+reachability.
+
 ## Layout
 
 | Path | Contents |
@@ -110,6 +142,9 @@ two paths can be asserted equivalent.
 | `netqa/cli.py` | Device operations over a transport |
 | `netqa/api.py` | FastAPI service |
 | `netqa/client.py` | HTTP client SDK |
+| `netqa/backends.py` | `RouteManager` abstraction and backends |
+| `netqa/wait.py` | Polling helpers for timing-sensitive assertions |
+| `tests/` | pytest suite and fixtures |
 | `scripts/lab.sh` | Lab lifecycle control |
 | `scripts/build-images.sh` | Node image build |
 | `scripts/collect.py` | State collection over SSH (Python) |
