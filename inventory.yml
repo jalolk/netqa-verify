@@ -1,0 +1,22 @@
+defaults:
+  username: admin
+  password: admin
+  port: 22
+
+devices:
+  r1:
+    role: router
+    host: 172.100.100.11
+    container: clab-netqa-r1
+  r2:
+    role: router
+    host: 172.100.100.12
+    container: clab-netqa-r2
+  h1:
+    role: host
+    host: 172.100.100.21
+    container: clab-netqa-h1
+  h2:
+    role: host
+    host: 172.100.100.22
+    container: clab-netqa-h2
