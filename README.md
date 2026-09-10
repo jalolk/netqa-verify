@@ -6,11 +6,15 @@ Containerlab, FRRouting and pytest.
 ## Topology
 
 ```
-   h1 ──────────── r1 ═══════════════ r2 ──────────── h2
-10.0.1.10       10.0.1.1           10.0.2.1       10.0.2.10
-                10.0.12.1 ──────── 10.0.12.2
-              lo 10.255.255.1     lo 10.255.255.2
+                        10.0.12.1 ──── 10.0.12.2
+                       /                           h1 ──────────── r1 ─                          ─ r2 ──────────── h2
+10.0.1.10       10.0.1.1\                        /10.0.2.1       10.0.2.10
+                         10.0.13.1 ──── 10.0.13.2
+              lo 10.255.255.1                lo 10.255.255.2
 ```
+
+The two routers are joined by a pair of equal-cost transit links, so OSPF
+installs both as next hops and traffic survives the loss of either one.
 
 | Node | Role | Image |
 | --- | --- | --- |
@@ -116,8 +120,14 @@ fixture are parametrised across both automatically.
 | `functional` | Core behaviour of the running topology |
 | `parity` | Identical assertions through every backend |
 | `regression` | Re-checks core paths after configuration change |
-| `performance` | Timing characteristics |
+| `performance` | Convergence timing under link failure |
 | `security` | Traffic filtering behaves as intended |
+| `slow` | Involves real reconvergence; excluded by `-m "not slow"` |
+
+```bash
+./.venv/bin/pytest -m "not slow"    # fast feedback, skips fault injection
+./.venv/bin/pytest --durations=10   # find what is actually costing time
+```
 
 Fixtures are layered by cost. The lab is brought up once per session and reused
 if already running; API service startup is session scoped; static routes created
@@ -127,7 +137,22 @@ backstop.
 Timing-sensitive assertions poll through `netqa.wait.wait_until` rather than
 sleeping for a fixed period. Protocol adjacency reaching `Full` does not imply
 the data plane is forwarding, so readiness is defined as observable end-to-end
-reachability.
+reachability, and tests that inject faults do not release the lab until every
+adjacency and equal-cost path has returned.
+
+## Failure and convergence testing
+
+`netqa.faults.FaultInjector` takes interfaces down and installs packet filters,
+always as context managers so the topology is restored even when an assertion
+fails.
+
+Convergence is measured against the forwarding plane rather than the routing
+table. When a link fails, the routing table still lists the failed next hop
+until OSPF ages the adjacency out roughly forty seconds later, but the next hop
+is marked inactive and removed from forwarding within about a second. Reading
+the routing table alone therefore measures a protocol timer, not the disruption
+a user experiences, so `route_next_hops` reports only next hops that are
+actually active.
 
 ## Intent versus reality
 
@@ -178,6 +203,7 @@ pipeline directly.
 | `netqa/wait.py` | Polling helpers for timing-sensitive assertions |
 | `netqa/spec.py` | Intended-state model |
 | `netqa/drift.py` | Intended versus live comparison |
+| `netqa/faults.py` | Link and traffic filter fault injection |
 | `spec/expected_topology.yml` | Declared intended state |
 | `tests/` | pytest suite and fixtures |
 | `scripts/lab.sh` | Lab lifecycle control |
