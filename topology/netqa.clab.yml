@@ -13,10 +13,12 @@ topology:
       binds:
         - configs/r1/frr.conf:/etc/frr/frr.conf
         - configs/daemons:/etc/frr/daemons
+        - configs/vtysh.conf:/etc/frr/vtysh.conf
     r2:
       binds:
         - configs/r2/frr.conf:/etc/frr/frr.conf
         - configs/daemons:/etc/frr/daemons
+        - configs/vtysh.conf:/etc/frr/vtysh.conf
     h1:
       image: nicolaka/netshoot:latest
       exec:
