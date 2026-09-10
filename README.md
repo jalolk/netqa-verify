@@ -14,8 +14,13 @@ Containerlab, FRRouting and pytest.
 
 | Node | Role | Image |
 | --- | --- | --- |
-| `r1`, `r2` | FRRouting routers, OSPF area 0 | `quay.io/frrouting/frr:10.7.1` |
-| `h1`, `h2` | End hosts on separate subnets | `nicolaka/netshoot` |
+| `r1`, `r2` | FRRouting routers, OSPF area 0 | `netqa/frr:10.7.1` |
+| `h1`, `h2` | End hosts on separate subnets | `netqa/host:latest` |
+
+Both images are built locally from `docker/`, layering an SSH daemon onto the
+upstream FRR and netshoot images so the devices can be driven the same way a
+physical switch would be. Management addresses are pinned on a dedicated
+`172.100.100.0/24` network so the inventory stays stable across redeployments.
 
 `h1` and `h2` sit on different subnets and can only reach each other if OSPF has
 converged and both routers have installed the far-side route, so end-to-end
@@ -34,12 +39,34 @@ its daemon runs in a separate VM.
 
 ## Usage
 
+Build the node images once, then manage the lab lifecycle:
+
 ```bash
+./scripts/build-images.sh   # build netqa/frr and netqa/host
 ./scripts/lab.sh deploy     # bring the topology up
 ./scripts/lab.sh wait       # block until the data plane converges
 ./scripts/lab.sh status     # node and OSPF neighbour state
 ./scripts/lab.sh destroy    # tear down
 ```
+
+## Collecting device state
+
+The same operations are implemented twice, over SSH, against the inventory in
+`inventory.yml`.
+
+```bash
+python3 -m venv .venv && ./.venv/bin/pip install -r requirements.txt
+
+PYTHONPATH=. ./.venv/bin/python scripts/collect.py          # Python, netmiko
+PYTHONPATH=. ./.venv/bin/python scripts/collect.py --json   # machine-readable
+./scripts/collect.sh                                        # Bash, sshpass
+```
+
+Router state is read through `vtysh`, which supports native JSON output, so the
+Python layer parses structured data rather than scraping CLI text.
+
+Lab credentials are `admin` / `admin`. They are intentionally trivial and are
+suitable only for a disposable local topology.
 
 ## Layout
 
@@ -47,4 +74,10 @@ its daemon runs in a separate VM.
 | --- | --- |
 | `topology/netqa.clab.yml` | Containerlab topology definition |
 | `topology/configs/` | Per-router FRR configuration |
+| `docker/` | Node image definitions |
+| `inventory.yml` | Device inventory shared by all automation |
+| `netqa/` | Python automation package |
 | `scripts/lab.sh` | Lab lifecycle control |
+| `scripts/build-images.sh` | Node image build |
+| `scripts/collect.py` | State collection over SSH (Python) |
+| `scripts/collect.sh` | State collection over SSH (Bash) |
