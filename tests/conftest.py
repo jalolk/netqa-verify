@@ -10,6 +10,7 @@ import pytest
 from netqa.backends import RouteManager, make_backend
 from netqa.client import ApiClient
 from netqa.inventory import Device, load_inventory
+from netqa.spec import TopologySpec, load_spec
 from netqa.wait import wait_until
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -43,6 +44,11 @@ def _lab_is_running() -> bool:
 @pytest.fixture(scope="session")
 def inventory() -> dict[str, Device]:
     return load_inventory()
+
+
+@pytest.fixture(scope="session")
+def spec() -> TopologySpec:
+    return load_spec()
 
 
 @pytest.fixture(scope="session")
